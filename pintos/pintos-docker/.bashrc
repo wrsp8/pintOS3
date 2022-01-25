@@ -109,4 +109,5 @@ source $OSH/oh-my-bash.sh
 export PATH=$PATH:~/pintos/utils
 export PINTOS_HOME=/root/pintos
 PINTOSPH="threads" # stop@000001
+
 export PINTOSPH
