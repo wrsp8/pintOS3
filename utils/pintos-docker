@@ -1,14 +1,10 @@
 #!/bin/bash
 pintos="$(dirname $0)"
 pintos="$(dirname $pintos)"
-PINTOS_HOME="/Users/obarrios/Documents/Galileo/CCVII/flujo-trabajo-github/pintos"
 
 echo $pintos
-echo $PINTOS_HOME
 
 dockerid=$pintos/.container-id
-
-echo $dockerid
 
 if [ ! -f "$dockerid" ]; then
     docker create -t -i -v $PINTOS_HOME:/root/pintos \
@@ -19,10 +15,8 @@ dockerid=`cat $dockerid`
 
 if [[ -n "$(docker container list --no-trunc -q | grep $dockerid)" ]];
 then
-    echo 'Executing'
-    docker exec -it -e TEST='test' $dockerid bash
+    docker exec -it $dockerid bash
 else
-    echo 'Starting'
     docker start -i $dockerid
 fi
 

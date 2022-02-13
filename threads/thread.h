@@ -92,9 +92,13 @@ struct thread
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
-	
-    uint64_t sleep_time;
+    
 
+    //codigo de solución
+    uint64_t tiempo_dormido;
+    int prioridad_base;
+    struct list locks;
+    struct lock *espera_locks;
 	
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
@@ -141,7 +145,16 @@ void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
+//Solución
+
 void insertar_en_lista_espera(int64_t ticks);
 void remover_thread_durmiente(int64_t ticks);
+void chequear_invocacion(struct thread *t, void *aux UNUSED);
+bool thread_comparar_prioridad(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
+void thread_donar_prioridad(struct thread *t);
+void thread_mantener_lock(struct lock *lock);
+void thread_remover_lock(struct lock *lock);
+bool lock_comparar_prioridad(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
+void thread_actualizar_prioridad(struct thread *t);
 
 #endif /* threads/thread.h */

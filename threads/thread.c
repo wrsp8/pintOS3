@@ -82,7 +82,7 @@ void insertar_en_lista_espera(int64_t ticks){
 	Cambiar su estatus a THREAD_BLOCKED, y definir su tiempo de expiracion */
 	
 	struct thread *thread_actual = thread_current ();
-	thread_actual->sleep_time= timer_ticks() + ticks;
+	thread_actual->tiempo_dormido= timer_ticks() + ticks;
   
   /*Donde TIEMPO_DORMIDO es el atributo de la estructura thread que usted
 	  definió como paso inicial*/
@@ -108,7 +108,7 @@ void remover_thread_durmiente(int64_t ticks){
 		/*Si el tiempo global es mayor al tiempo que el thread permanecía dormido
 		  entonces su tiempo de dormir ha expirado*/
 		
-		if(ticks >= thread_lista_espera->sleep_time){
+		if(ticks >= thread_lista_espera->tiempo_dormido){
 			//Lo removemos de "lista_espera" y lo regresamos a ready_list
 			iter = list_remove(iter);
 			thread_unblock(thread_lista_espera);
@@ -120,6 +120,72 @@ void remover_thread_durmiente(int64_t ticks){
   
 }
 
+void chequar_invocacion(struct thread *t, void *aux UNUSED){
+  if(t->status == THREAD_BLOCKED && t->tiempo_dormido>0){
+  --t->tiempo_dormido;
+  if(t->tiempo_dormido == 0)
+    thread_unblock(t);
+  }
+}
+
+bool thread_comparar_prioridad(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED){
+  return list_entry(a,struct thread, elem)->priority > list_entry(b,struct thread, elem)->priority;
+}
+
+void thread_donar_prioridad(struct thread *t){
+  enum intr_level old_level = intr_disable();
+  thread_actualizar_prioridad(t);
+
+  if(t->status == THREAD_READY){
+    list_remove(&t->elem);
+    list_insert_ordered(&ready_list, &t->elem, thread_comparar_prioridad, NULL);
+
+  }
+  intr_set_level(old_level);
+}
+
+void thread_mantener_lock(struct lock *lock){
+  enum intr_level old_level = intr_disable();
+  struct thread *thread_actual = thread_current();
+  list_insert_ordered(&thread_actual->locks,&lock->elemento,lock_comparar_prioridad,NULL);
+
+  if(thread_actual->priority < lock->prioridad_maxima){
+    thread_actual->priority = lock->prioridad_maxima;
+    thread_yield();
+  }
+  intr_set_level(old_level);
+
+}
+
+void thread_remover_lock(struct lock *lock){
+  enum intr_level old_level = intr_disable();
+  list_remove(&lock->elemento);
+  thread_actualizar_prioridad(thread_current());
+  intr_set_level(old_level);
+}
+
+
+bool lock_comparar_prioridad(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED){
+  return list_entry(a,struct lock, elemento)->prioridad_maxima > list_entry(b,struct lock, elemento)->prioridad_maxima;
+}
+
+void thread_actualizar_prioridad(struct thread *t){
+
+  enum intr_level old_level = intr_disable();
+  int max = t->prioridad_base;
+  int lock_priority;
+  if(!list_empty(&t->locks)){
+    list_sort(&t->locks,lock_comparar_prioridad,NULL);
+    lock_priority = list_entry(list_front(&t->locks),struct lock, elemento)->prioridad_maxima;
+    if(max < lock_priority)
+      max = lock_priority;
+
+  }
+  t->priority = max;
+
+  intr_set_level(old_level);
+
+}
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -233,6 +299,7 @@ thread_create (const char *name, int priority,
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
 
+  t->tiempo_dormido = 0;
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
   kf->eip = NULL;
@@ -385,7 +452,21 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
-  thread_current ()->priority = new_priority;
+  //thread_current ()->priority = new_priority;
+
+  //Se desabilitan las interrupciones
+
+
+  enum intr_level viejo_nivel = intr_disable();
+  struct thread *thread_actual = thread_current();
+  int vieja_prioridad = thread_actual->priority;
+  thread_actual->prioridad_base=new_priority;
+
+  if(new_priority > vieja_prioridad||list_empty(&thread_actual->locks)){
+    thread_actual->priority = new_priority;
+    thread_yield();
+  }
+  intr_set_level(viejo_nivel);
 }
 
 /* Returns the current thread's priority. */
