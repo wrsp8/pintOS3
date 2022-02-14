@@ -121,9 +121,9 @@ void remover_thread_durmiente(int64_t ticks){
 }
 
 void chequar_invocacion(struct thread *t, void *aux UNUSED){
-  if(t->status == THREAD_BLOCKED && t->tiempo_dormido>0){
-  --t->tiempo_dormido;
-  if(t->tiempo_dormido == 0)
+  if(t->status == THREAD_BLOCKED && t->ticks_bloqueados>0){
+  --t->ticks_bloqueados;
+  if(t->ticks_bloqueados == 0)
     thread_unblock(t);
   }
 }
@@ -299,7 +299,7 @@ thread_create (const char *name, int priority,
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
 
-  t->tiempo_dormido = 0;
+  t->ticks_bloqueados = 0;
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
   kf->eip = NULL;

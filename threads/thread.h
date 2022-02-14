@@ -96,6 +96,7 @@ struct thread
 
     //codigo de solución
     uint64_t tiempo_dormido;
+    uint64_t ticks_bloqueados;
     int prioridad_base;
     struct list locks;
     struct lock *espera_locks;
@@ -156,5 +157,5 @@ void thread_mantener_lock(struct lock *lock);
 void thread_remover_lock(struct lock *lock);
 bool lock_comparar_prioridad(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
 void thread_actualizar_prioridad(struct thread *t);
-
+void chequar_invocacion(struct thread *t, void *aux UNUSED);
 #endif /* threads/thread.h */
